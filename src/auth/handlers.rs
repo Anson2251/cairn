@@ -44,7 +44,7 @@ pub async fn register(
             return Err(AppError::InviteCodeAlreadyUsed);
         }
 
-        if invite_code_row.expires_at.map_or(false, |e| e < Utc::now()) {
+        if invite_code_row.expires_at.is_some_and(|e| e < Utc::now()) {
             return Err(AppError::InviteCodeExpired);
         }
 
@@ -200,29 +200,29 @@ pub async fn login(
     .await?;
 
     let mut trailblazer = None;
-    if let Some(seq) = user.trailblazer_seq {
-        if let Some(invite_id) = user.invite_code_id {
-            let cairn_name: Option<String> = sqlx::query_scalar(
-                "SELECT cairn_name FROM invite_codes WHERE id = $1"
-            )
-            .bind(invite_id)
-            .fetch_optional(&state.db)
-            .await?;
+    if let Some(seq) = user.trailblazer_seq
+        && let Some(invite_id) = user.invite_code_id
+    {
+        let cairn_name: Option<String> = sqlx::query_scalar(
+            "SELECT cairn_name FROM invite_codes WHERE id = $1"
+        )
+        .bind(invite_id)
+        .fetch_optional(&state.db)
+        .await?;
 
-            let origin_coord: Option<sqlx::postgres::types::PgPoint> = sqlx::query_scalar(
-                "SELECT origin_coord FROM invite_codes WHERE id = $1"
-            )
-            .bind(invite_id)
-            .fetch_optional(&state.db)
-            .await?;
+        let origin_coord: Option<sqlx::postgres::types::PgPoint> = sqlx::query_scalar(
+            "SELECT origin_coord FROM invite_codes WHERE id = $1"
+        )
+        .bind(invite_id)
+        .fetch_optional(&state.db)
+        .await?;
 
-            if let Some(name) = cairn_name {
-                trailblazer = Some(TrailblazerInfo {
-                    sequence: seq,
-                    cairn_name: name,
-                    origin_coord: origin_coord.map(|p| (p.x, p.y)).unwrap_or((0.0, 0.0)),
-                });
-            }
+        if let Some(name) = cairn_name {
+            trailblazer = Some(TrailblazerInfo {
+                sequence: seq,
+                cairn_name: name,
+                origin_coord: origin_coord.map(|p| (p.x, p.y)).unwrap_or((0.0, 0.0)),
+            });
         }
     }
 

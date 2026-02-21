@@ -13,6 +13,8 @@ use crate::error::{AppError, AppResult};
 use crate::middleware::auth::AuthContext;
 use crate::AppState;
 
+type UpdatedRouteRow = (Uuid, i32, Option<String>, Option<String>, Value, Value, Option<String>);
+
 #[derive(Debug, Deserialize)]
 pub struct PushRequest {
     pub client_id: Uuid,
@@ -192,10 +194,10 @@ pub async fn pull(
     Extension(auth): Extension<AuthContext>,
     Json(body): Json<PullRequest>,
 ) -> AppResult<Json<PullResponse>> {
-    let last_sync = body.last_synced_at.unwrap_or_else(|| DateTime::UNIX_EPOCH);
+    let last_sync = body.last_synced_at.unwrap_or(DateTime::UNIX_EPOCH);
 
     // Fetch all routes updated since last sync
-    let all_updated: Vec<(Uuid, i32, Option<String>, Option<String>, Value, Value, Option<String>)> = sqlx::query_as(
+    let all_updated: Vec<UpdatedRouteRow> = sqlx::query_as(
         r#"
         SELECT r.id, r.version, r.name, r.description, r.geojson, r.metadata, r.notes
         FROM routes r
@@ -213,10 +215,10 @@ pub async fn pull(
         .into_iter()
         .filter_map(|(route_id, version, name, description, geojson, metadata, notes)| {
             // Skip if client already has this exact version
-            if let Some(&client_version) = body.known_versions.get(&route_id) {
-                if client_version == version {
-                    return None; // Client already has this version, skip it
-                }
+            if let Some(&client_version) = body.known_versions.get(&route_id)
+                && client_version == version
+            {
+                return None; // Client already has this version, skip it
             }
             Some(UpdatedRoute {
                 route_id,

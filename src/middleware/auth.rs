@@ -62,13 +62,12 @@ pub async fn optional_auth_middleware(
     mut request: Request,
     next: Next,
 ) -> Response {
-    if let Some(auth_header) = request.headers().get("authorization").and_then(|h| h.to_str().ok()) {
-        if let Some(token) = auth_header.strip_prefix("Bearer ") {
-            if let Ok(claims) = state.jwt.verify_access_token(token) {
-                let auth_context = AuthContext::from(claims);
-                request.extensions_mut().insert(auth_context);
-            }
-        }
+    if let Some(auth_header) = request.headers().get("authorization").and_then(|h| h.to_str().ok())
+        && let Some(token) = auth_header.strip_prefix("Bearer ")
+        && let Ok(claims) = state.jwt.verify_access_token(token)
+    {
+        let auth_context = AuthContext::from(claims);
+        request.extensions_mut().insert(auth_context);
     }
 
     next.run(request).await

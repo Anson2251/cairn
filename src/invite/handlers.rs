@@ -67,7 +67,7 @@ pub async fn validate_invite(
             if inv.used {
                 return Err(AppError::InviteCodeAlreadyUsed);
             }
-            if inv.expires_at.map_or(false, |e| e < Utc::now()) {
+            if inv.expires_at.is_some_and(|e| e < Utc::now()) {
                 return Err(AppError::InviteCodeExpired);
             }
 
