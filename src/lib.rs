@@ -53,29 +53,21 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/login", post(auth::handlers::login))
         .route("/logout", post(auth::handlers::logout))
         .route("/refresh", post(auth::handlers::refresh))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), rate_limit_middleware));
+
+    let protected_auth_routes = Router::new()
         .route("/me", get(auth::handlers::me))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), auth_middleware))
         .layer(axum::middleware::from_fn_with_state(state.clone(), rate_limit_middleware));
 
     let protected = Router::new()
-        .nest(
-            "/sketches",
-            Router::new()
-                .route("/", get(sketches::handlers::list_sketches).post(sketches::handlers::create_sketch))
-                .route("/{id}", get(sketches::handlers::get_sketch).put(sketches::handlers::update_sketch).delete(sketches::handlers::delete_sketch))
-                .route("/{id}/routes", get(routes::handlers::list_routes).post(routes::handlers::create_route))
-        )
-        .nest(
-            "/routes",
-            Router::new()
-                .route("/{id}", get(routes::handlers::get_route).put(routes::handlers::update_route).delete(routes::handlers::delete_route))
-        )
-        .nest(
-            "/sync",
-            Router::new()
-                .route("/push", post(sync::handlers::push))
-                .route("/pull", post(sync::handlers::pull))
-                .route("/resolve/{route_id}", post(sync::handlers::resolve))
-        )
+        .route("/api/sketches", get(sketches::handlers::list_sketches).post(sketches::handlers::create_sketch))
+        .route("/api/sketches/{id}", get(sketches::handlers::get_sketch).put(sketches::handlers::update_sketch).delete(sketches::handlers::delete_sketch))
+        .route("/api/sketches/{id}/routes", get(routes::handlers::list_routes).post(routes::handlers::create_route))
+        .route("/api/routes/{id}", get(routes::handlers::get_route).put(routes::handlers::update_route).delete(routes::handlers::delete_route))
+        .route("/api/sync/push", post(sync::handlers::push))
+        .route("/api/sync/pull", post(sync::handlers::pull))
+        .route("/api/sync/resolve/{route_id}", post(sync::handlers::resolve))
         .layer(axum::middleware::from_fn_with_state(state.clone(), auth_middleware))
         .layer(axum::middleware::from_fn_with_state(state.clone(), rate_limit_middleware));
 
@@ -86,11 +78,14 @@ pub fn create_router(state: Arc<AppState>) -> Router {
     let admin_routes = Router::new()
         .route("/invites", get(invite::handlers::list_invites).post(invite::handlers::create_invites))
         .route("/invites/{id}", delete(invite::handlers::revoke_invite))
-        .layer(axum::middleware::from_fn_with_state(state.clone(), admin_middleware));
+        .layer(axum::middleware::from_fn_with_state(state.clone(), admin_middleware))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), auth_middleware))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), rate_limit_middleware));
 
     Router::new()
         .nest("/api/auth", auth_routes)
-        .nest("/api", protected)
+        .nest("/api/auth", protected_auth_routes)
+        .merge(protected)
         .nest("/api/invite", invite_routes)
         .nest("/api/admin", admin_routes)
         .layer(TraceLayer::new_for_http())

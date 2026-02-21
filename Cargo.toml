@@ -3,6 +3,14 @@ name = "cairn"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "cairn"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cairn"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.101"
 async-trait = "0.1.89"
@@ -13,7 +21,7 @@ config = "0.15.19"
 cookie = "0.18.1"
 dotenvy = "0.15.7"
 hex = "0.4.3"
-jsonwebtoken = "10.3.0"
+jsonwebtoken = { version = "10.3.0", default-features = false, features = ["rust_crypto"] }
 once_cell = "1.21.3"
 rand = "0.10.0"
 redis = { version = "1.0.3", features = ["tokio-comp", "connection-manager"] }
@@ -35,8 +43,3 @@ whoami = "2.1.1"
 tower = "0.5"
 http-body-util = "0.1"
 mime = "0.3"
-reqwest = { version = "0.13.2", features = ["json", "rustls", "cookies"] }
-
-[[test]]
-name = "integration_tests"
-path = "tests/integration_tests.rs"

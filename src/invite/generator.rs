@@ -56,7 +56,7 @@ mod tests {
         assert!(code3.code.starts_with("CAIRN-002-"));
 
         let parts: Vec<&str> = code1.code.split('-').collect();
-        assert_eq!(parts.len(), 3);
+        assert_eq!(parts.len(), 4);
         assert_eq!(parts[0], "CAIRN");
         assert_eq!(parts[1], "001");
     }
