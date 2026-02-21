@@ -236,9 +236,8 @@ pub async fn pull(
 
     // Log the sync operation
     sqlx::query(
-        "INSERT INTO sync_log (route_id, user_id, action, version_before, version_after, client_id) VALUES ($1, $2, 'pull', $3, $4, $5)"
+        "INSERT INTO sync_log (route_id, user_id, action, version_before, version_after, client_id) VALUES (NULL, $1, 'pull', $2, $3, $4)"
     )
-    .bind(Uuid::nil()) // System route_id for pull operations
     .bind(auth.user_id)
     .bind(0)
     .bind(updated_routes.len() as i32)
