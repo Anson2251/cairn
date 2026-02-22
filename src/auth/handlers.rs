@@ -16,6 +16,7 @@ use crate::auth::{
 use crate::error::{AppError, AppResult};
 use crate::middleware::auth::AuthContext;
 use crate::AppState;
+use uuid::Uuid;
 
 pub async fn register(
     State(state): State<Arc<AppState>>,
@@ -181,63 +182,17 @@ pub async fn login(
             return Err(AppError::InvalidCredentials);
         }
 
-        let access_token = state.jwt.generate_access_token(
-            user.id,
-            &user.email,
-            &user.username,
-            &user.role,
-            user.email_verified,
-        )?;
-
-        let (refresh_token, _) = state.jwt.generate_refresh_token(user.id, body.client_id)?;
-        let refresh_hash = JwtManager::hash_token(&refresh_token);
-
-        let refresh_expiry = Utc::now() + chrono::Duration::days(state.config.jwt.refresh_expiry_days);
-        sqlx::query(
-            "INSERT INTO refresh_tokens (user_id, token_hash, client_id, expires_at) VALUES ($1, $2, $3, $4)"
+        let admin_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM users WHERE role = 'admin' AND deleted_at IS NULL"
         )
-        .bind(user.id)
-        .bind(&refresh_hash)
-        .bind(body.client_id)
-        .bind(refresh_expiry)
-        .execute(&state.db)
+        .fetch_one(&state.db)
         .await?;
 
-        let user_response = UserResponse {
-            id: user.id,
-            email: user.email,
-            email_verified: user.email_verified,
-            username: user.username,
-            avatar_url: user.avatar_url,
-            role: user.role,
-            settings: user.settings,
-            trailblazer_seq: user.trailblazer_seq,
-            cairn_name: None,
-            origin_coord: None,
-        };
+        if admin_count > 1 {
+            return Err(AppError::InvalidCredentials);
+        }
 
-        let response_body = AuthResponse {
-            user: user_response,
-            access_token,
-            trailblazer: None,
-        };
-
-        let cookie: Cookie = Cookie::build(("refresh_token", refresh_token))
-            .http_only(true)
-            .secure(true)
-            .same_site(SameSite::Strict)
-            .path("/")
-            .max_age(cookie::time::Duration::days(state.config.jwt.refresh_expiry_days))
-            .build();
-
-        let response = Response::builder()
-            .status(StatusCode::OK)
-            .header(SET_COOKIE, cookie.to_string())
-            .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_string(&response_body)?))
-            .unwrap();
-
-        return Ok(response);
+        return build_auth_response(&state, user, body.client_id, None).await;
     }
 
     let user = user.ok_or(AppError::InvalidCredentials)?;
@@ -251,6 +206,44 @@ pub async fn login(
         return Err(AppError::InvalidCredentials);
     }
 
+    let trailblazer = build_trailblazer_info(&state.db, &user).await;
+
+    build_auth_response(&state, user, body.client_id, trailblazer).await
+}
+
+async fn build_trailblazer_info(db: &sqlx::PgPool, user: &User) -> Option<TrailblazerInfo> {
+    let seq = user.trailblazer_seq?;
+    let invite_id = user.invite_code_id?;
+
+    let cairn_name: Option<String> = sqlx::query_scalar(
+        "SELECT cairn_name FROM invite_codes WHERE id = $1"
+    )
+    .bind(invite_id)
+    .fetch_optional(db)
+    .await
+    .ok()?;
+
+    let origin_coord: Option<sqlx::postgres::types::PgPoint> = sqlx::query_scalar(
+        "SELECT origin_coord FROM invite_codes WHERE id = $1"
+    )
+    .bind(invite_id)
+    .fetch_optional(db)
+    .await
+    .ok()?;
+
+    cairn_name.map(|name| TrailblazerInfo {
+        sequence: seq,
+        cairn_name: name,
+        origin_coord: origin_coord.map(|p| (p.x, p.y)).unwrap_or((0.0, 0.0)),
+    })
+}
+
+async fn build_auth_response(
+    state: &Arc<AppState>,
+    user: User,
+    client_id: Uuid,
+    trailblazer: Option<TrailblazerInfo>,
+) -> AppResult<Response<Body>> {
     let access_token = state.jwt.generate_access_token(
         user.id,
         &user.email,
@@ -259,7 +252,7 @@ pub async fn login(
         user.email_verified,
     )?;
 
-    let (refresh_token, _) = state.jwt.generate_refresh_token(user.id, body.client_id)?;
+    let (refresh_token, _) = state.jwt.generate_refresh_token(user.id, client_id)?;
     let refresh_hash = JwtManager::hash_token(&refresh_token);
 
     let refresh_expiry = Utc::now() + chrono::Duration::days(state.config.jwt.refresh_expiry_days);
@@ -268,37 +261,10 @@ pub async fn login(
     )
     .bind(user.id)
     .bind(&refresh_hash)
-    .bind(body.client_id)
+    .bind(&client_id)
     .bind(refresh_expiry)
     .execute(&state.db)
     .await?;
-
-    let mut trailblazer = None;
-    if let Some(seq) = user.trailblazer_seq
-        && let Some(invite_id) = user.invite_code_id
-    {
-        let cairn_name: Option<String> = sqlx::query_scalar(
-            "SELECT cairn_name FROM invite_codes WHERE id = $1"
-        )
-        .bind(invite_id)
-        .fetch_optional(&state.db)
-        .await?;
-
-        let origin_coord: Option<sqlx::postgres::types::PgPoint> = sqlx::query_scalar(
-            "SELECT origin_coord FROM invite_codes WHERE id = $1"
-        )
-        .bind(invite_id)
-        .fetch_optional(&state.db)
-        .await?;
-
-        if let Some(name) = cairn_name {
-            trailblazer = Some(TrailblazerInfo {
-                sequence: seq,
-                cairn_name: name,
-                origin_coord: origin_coord.map(|p| (p.x, p.y)).unwrap_or((0.0, 0.0)),
-            });
-        }
-    }
 
     let user_response = UserResponse {
         id: user.id,
@@ -477,27 +443,7 @@ pub async fn me(
         .fetch_one(&state.db)
         .await?;
 
-    let mut trailblazer_cairn_name = None;
-    let mut trailblazer_origin = None;
-
-    if let Some(invite_id) = user.invite_code_id {
-        let cairn_name: Option<String> = sqlx::query_scalar(
-            "SELECT cairn_name FROM invite_codes WHERE id = $1"
-        )
-        .bind(invite_id)
-        .fetch_optional(&state.db)
-        .await?;
-
-        let origin_coord: Option<sqlx::postgres::types::PgPoint> = sqlx::query_scalar(
-            "SELECT origin_coord FROM invite_codes WHERE id = $1"
-        )
-        .bind(invite_id)
-        .fetch_optional(&state.db)
-        .await?;
-
-        trailblazer_cairn_name = cairn_name;
-        trailblazer_origin = origin_coord.map(|p| (p.x, p.y));
-    }
+    let trailblazer = build_trailblazer_info(&state.db, &user).await;
 
     let response = UserResponse {
         id: user.id,
@@ -508,8 +454,8 @@ pub async fn me(
         role: user.role,
         settings: user.settings,
         trailblazer_seq: user.trailblazer_seq,
-        cairn_name: trailblazer_cairn_name,
-        origin_coord: trailblazer_origin,
+        cairn_name: trailblazer.as_ref().map(|t| t.cairn_name.clone()),
+        origin_coord: trailblazer.as_ref().map(|t| t.origin_coord),
     };
 
     Ok(Json(response))
@@ -552,27 +498,7 @@ pub async fn update_profile(
     .fetch_one(&state.db)
     .await?;
 
-    let mut trailblazer_cairn_name = None;
-    let mut trailblazer_origin = None;
-
-    if let Some(invite_id) = user.invite_code_id {
-        let cairn_name: Option<String> = sqlx::query_scalar(
-            "SELECT cairn_name FROM invite_codes WHERE id = $1"
-        )
-        .bind(invite_id)
-        .fetch_optional(&state.db)
-        .await?;
-
-        let origin_coord: Option<sqlx::postgres::types::PgPoint> = sqlx::query_scalar(
-            "SELECT origin_coord FROM invite_codes WHERE id = $1"
-        )
-        .bind(invite_id)
-        .fetch_optional(&state.db)
-        .await?;
-
-        trailblazer_cairn_name = cairn_name;
-        trailblazer_origin = origin_coord.map(|p| (p.x, p.y));
-    }
+    let trailblazer = build_trailblazer_info(&state.db, &user).await;
 
     let response = UserResponse {
         id: user.id,
@@ -583,8 +509,8 @@ pub async fn update_profile(
         role: user.role,
         settings: user.settings,
         trailblazer_seq: user.trailblazer_seq,
-        cairn_name: trailblazer_cairn_name,
-        origin_coord: trailblazer_origin,
+        cairn_name: trailblazer.as_ref().map(|t| t.cairn_name.clone()),
+        origin_coord: trailblazer.as_ref().map(|t| t.origin_coord),
     };
 
     Ok(Json(response))

@@ -16,6 +16,7 @@ use crate::AppState;
 pub fn create_admin_router(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let public_routes = Router::new()
         .route("/login", get(handlers::login_page).post(handlers::login))
+        .route("/logout", post(handlers::logout))
         .route("/", get(handlers::admin_index))
         .layer(axum::middleware::from_fn_with_state(state.clone(), optional_auth_middleware_with_cookie));
 

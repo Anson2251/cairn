@@ -1,5 +1,6 @@
 use askama::Template;
 use axum::{
+    body::Body,
     extract::{Form, State},
     http::{header::SET_COOKIE, StatusCode},
     response::{Html, IntoResponse, Response},
@@ -11,6 +12,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::auth::jwt::{verify_password, JwtManager};
+use crate::auth::templates::LoggedOutPage;
 use crate::error::AppResult;
 use crate::middleware::auth::AuthContext;
 use crate::AppState;
@@ -407,4 +409,48 @@ pub async fn stats(
 
     let html = StatsStats { stats: &stats }.render()?;
     Ok(Html(html))
+}
+
+pub async fn logout(
+    State(state): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+) -> AppResult<Response<Body>> {
+    let cookie_header = headers
+        .get("cookie")
+        .and_then(|h| h.to_str().ok());
+
+    if let Some(cookie_header) = cookie_header {
+        if let Some(refresh_token) = cookie_header
+            .split(';')
+            .find_map(|c| {
+                let c = c.trim();
+                c.strip_prefix("refresh_token=")
+            })
+        {
+            let token_hash = JwtManager::hash_token(refresh_token);
+            sqlx::query("UPDATE refresh_tokens SET revoked = TRUE WHERE token_hash = $1")
+                .bind(&token_hash)
+                .execute(&state.db)
+                .await?;
+        }
+    }
+
+    let cookie = Cookie::build(("refresh_token", ""))
+        .http_only(true)
+        .secure(true)
+        .same_site(SameSite::Strict)
+        .path("/")
+        .max_age(cookie::time::Duration::seconds(0))
+        .build();
+
+    let html = LoggedOutPage.render()?;
+    
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header(SET_COOKIE, cookie.to_string())
+        .header("content-type", "text/html")
+        .body(Body::from(html))
+        .unwrap();
+
+    Ok(response)
 }
