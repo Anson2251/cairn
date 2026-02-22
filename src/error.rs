@@ -1,3 +1,4 @@
+use axum::extract::multipart::MultipartError;
 use axum::{
     extract::rejection::JsonRejection,
     http::StatusCode,
@@ -5,6 +6,7 @@ use axum::{
     Json,
 };
 use serde_json::json;
+use std::io;
 use thiserror::Error;
 use validator::ValidationErrors;
 
@@ -83,6 +85,24 @@ impl From<ValidationErrors> for AppError {
 impl From<redis::RedisError> for AppError {
     fn from(err: redis::RedisError) -> Self {
         AppError::Redis(err.to_string())
+    }
+}
+
+impl From<io::Error> for AppError {
+    fn from(err: io::Error) -> Self {
+        AppError::Internal(anyhow::anyhow!("IO error: {}", err))
+    }
+}
+
+impl From<MultipartError> for AppError {
+    fn from(err: MultipartError) -> Self {
+        AppError::Validation(format!("Multipart error: {}", err))
+    }
+}
+
+impl From<askama::Error> for AppError {
+    fn from(err: askama::Error) -> Self {
+        AppError::Internal(anyhow::anyhow!("Template error: {}", err))
     }
 }
 

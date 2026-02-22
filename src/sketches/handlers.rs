@@ -266,3 +266,78 @@ pub async fn delete_sketch(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[derive(Debug, Serialize)]
+pub struct SharedSketchResponse {
+    pub id: Uuid,
+    pub name: String,
+    pub description: Option<String>,
+    pub is_public: bool,
+    pub created_at: String,
+    pub updated_at: String,
+    pub route_count: i64,
+    pub owner_username: String,
+    pub access_level: String,
+}
+
+pub async fn list_shared_sketches(
+    State(state): State<Arc<AppState>>,
+    Extension(auth): Extension<AuthContext>,
+    Query(query): Query<ListSketchesQuery>,
+) -> AppResult<Json<Vec<SharedSketchResponse>>> {
+    let page = query.page.unwrap_or(1).max(1);
+    let per_page = query.per_page.unwrap_or(20).clamp(1, 100);
+    let offset = (page - 1) * per_page;
+
+    #[derive(Debug, FromRow)]
+    struct SharedSketch {
+        pub id: Uuid,
+        pub name: String,
+        pub description: Option<String>,
+        pub is_public: bool,
+        pub created_at: chrono::DateTime<Utc>,
+        pub updated_at: chrono::DateTime<Utc>,
+        pub route_count: i64,
+        pub owner_username: String,
+        pub access_level: String,
+    }
+
+    let sketches: Vec<SharedSketch> = sqlx::query_as(
+        r#"
+        SELECT s.id, s.name, s.description, s.is_public, s.created_at, s.updated_at,
+               COUNT(r.id) as route_count,
+               u.username as owner_username,
+               sh.access_level
+        FROM sketches s
+        JOIN shares sh ON sh.sketch_id = s.id
+        JOIN users u ON u.id = s.user_id
+        LEFT JOIN routes r ON r.sketch_id = s.id AND r.deleted_at IS NULL
+        WHERE sh.user_id = $1 AND s.deleted_at IS NULL
+        GROUP BY s.id, u.username, sh.access_level
+        ORDER BY s.updated_at DESC
+        LIMIT $2 OFFSET $3
+        "#
+    )
+    .bind(auth.user_id)
+    .bind(per_page)
+    .bind(offset)
+    .fetch_all(&state.db)
+    .await?;
+
+    let responses: Vec<SharedSketchResponse> = sketches
+        .into_iter()
+        .map(|sketch| SharedSketchResponse {
+            id: sketch.id,
+            name: sketch.name,
+            description: sketch.description,
+            is_public: sketch.is_public,
+            created_at: sketch.created_at.to_rfc3339(),
+            updated_at: sketch.updated_at.to_rfc3339(),
+            route_count: sketch.route_count,
+            owner_username: sketch.owner_username,
+            access_level: sketch.access_level,
+        })
+        .collect();
+
+    Ok(Json(responses))
+}

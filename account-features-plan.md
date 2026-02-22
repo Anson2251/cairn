@@ -212,6 +212,26 @@ CREATE TABLE refresh_tokens (
 CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
 ```
 
+### Assets Table
+
+```sql
+-- User uploaded files (images, attachments)
+CREATE TABLE assets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    original_filename VARCHAR(255),
+    mime_type VARCHAR(100) NOT NULL,
+    size INTEGER NOT NULL,
+    hash VARCHAR(64) NOT NULL,                    -- SHA-256 hash for deduplication
+    data BYTEA NOT NULL,                          -- file content stored in DB
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_assets_owner ON assets(owner_id);
+CREATE INDEX idx_assets_hash ON assets(hash);
+CREATE UNIQUE INDEX idx_assets_hash_unique ON assets(hash, owner_id);
+```
+
 ---
 
 ## API Endpoints
@@ -262,6 +282,13 @@ CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
 | POST | `/api/sync/push` | Push local changes (batch of routes) |
 | POST | `/api/sync/pull` | Pull remote changes since last sync |
 | POST | `/api/sync/resolve/{route_id}` | Resolve a conflict for one route |
+
+### Assets (Protected)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/assets` | Upload file (multipart, max 10MB), returns URL |
+| GET | `/assets/{hash}.{ext}` | Download file (requires auth, permission check) |
 
 ### Sharing (Protected)
 

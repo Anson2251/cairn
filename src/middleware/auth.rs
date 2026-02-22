@@ -1,7 +1,7 @@
 use axum::{
     extract::{Request, State},
     middleware::Next,
-    response::Response,
+    response::{IntoResponse, Response},
 };
 use std::sync::Arc;
 
@@ -53,6 +53,140 @@ pub async fn auth_middleware(
 
     request.extensions_mut().insert(auth_context);
     
+    Ok(next.run(request).await)
+}
+
+pub async fn auth_middleware_with_cookie(
+    State(state): State<Arc<AppState>>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, AppError> {
+    let cookie_header = request
+        .headers()
+        .get("cookie")
+        .and_then(|h| h.to_str().ok());
+
+    let token = cookie_header
+        .and_then(|c| c.split(';').find(|kv| kv.trim().starts_with("refresh_token=")))
+        .and_then(|t| t.strip_prefix("refresh_token="));
+
+    if token.is_none() {
+        return Err(AppError::Auth("No refresh token".to_string()));
+    }
+
+    let refresh_token = token.unwrap();
+    let claims = state.jwt.verify_refresh_token(refresh_token)?;
+    
+    let user: crate::auth::types::User = sqlx::query_as(
+        "SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL"
+    )
+    .bind(claims.sub)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::Auth("User not found".to_string()))?;
+
+    let auth_context = AuthContext {
+        user_id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        email_verified: user.email_verified,
+    };
+
+    request.extensions_mut().insert(auth_context);
+    
+    Ok(next.run(request).await)
+}
+
+pub async fn auth_middleware_with_cookie_redirect(
+    State(state): State<Arc<AppState>>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, AppError> {
+    let cookie_header = request
+        .headers()
+        .get("cookie")
+        .and_then(|h| h.to_str().ok());
+
+    let token = cookie_header
+        .and_then(|c| c.split(';').find(|kv| kv.trim().starts_with("refresh_token=")))
+        .and_then(|t| t.strip_prefix("refresh_token="));
+
+    if token.is_none() {
+        return Ok(axum::response::Redirect::to("/admin/login").into_response());
+    }
+
+    let refresh_token = token.unwrap();
+    let claims = match state.jwt.verify_refresh_token(refresh_token) {
+        Ok(c) => c,
+        Err(_) => return Ok(axum::response::Redirect::to("/admin/login").into_response()),
+    };
+
+    let user: crate::auth::types::User = match sqlx::query_as(
+        "SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL"
+    )
+    .bind(claims.sub)
+    .fetch_optional(&state.db)
+    .await? {
+        Some(u) => u,
+        None => return Ok(axum::response::Redirect::to("/admin/login").into_response()),
+    };
+
+    let auth_context = AuthContext {
+        user_id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        email_verified: user.email_verified,
+    };
+
+    request.extensions_mut().insert(auth_context);
+
+    Ok(next.run(request).await)
+}
+
+pub async fn optional_auth_middleware_with_cookie(
+    State(state): State<Arc<AppState>>,
+    mut request: Request,
+    next: Next,
+) -> Result<Response, AppError> {
+    let cookie_header = request
+        .headers()
+        .get("cookie")
+        .and_then(|h| h.to_str().ok());
+
+    let token = cookie_header
+        .and_then(|c| c.split(';').find(|kv| kv.trim().starts_with("refresh_token=" )))
+        .and_then(|t| t.strip_prefix("refresh_token="));
+
+    let auth_opt: Option<AuthContext> = if let Some(refresh_token) = token {
+        if let Ok(claims) = state.jwt.verify_refresh_token(refresh_token) {
+            if let Ok(Some(user)) = sqlx::query_as::<_, crate::auth::types::User>(
+                "SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL"
+            )
+            .bind(claims.sub)
+            .fetch_optional(&state.db)
+            .await
+            {
+                Some(AuthContext {
+                    user_id: user.id,
+                    email: user.email,
+                    username: user.username,
+                    role: user.role,
+                    email_verified: user.email_verified,
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    request.extensions_mut().insert(auth_opt);
+
     Ok(next.run(request).await)
 }
 

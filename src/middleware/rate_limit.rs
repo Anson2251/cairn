@@ -14,24 +14,28 @@ use crate::AppState;
 
 pub async fn rate_limit_middleware(
     State(state): State<Arc<AppState>>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     request: Request,
     next: Next,
 ) -> Result<Response, AppError> {
+    let addr = request
+        .extensions()
+        .get::<ConnectInfo<SocketAddr>>()
+        .map(|c| c.0);
+
     let path = request.uri().path();
     let method = request.method().as_str();
     
-    let (limit_key, limit, window_secs) = match (method, path) {
-        ("POST", "/api/auth/login") => {
+    let (limit_key, limit, window_secs) = match (method, path, addr) {
+        ("POST", "/api/auth/login", Some(addr)) => {
             (format!("ratelimit:login:{}", addr.ip()), state.config.rate_limit.login_per_minute, 60)
         }
-        ("POST", "/api/auth/register") => {
+        ("POST", "/api/auth/register", Some(addr)) => {
             (format!("ratelimit:register:{}", addr.ip()), state.config.rate_limit.register_per_hour, 3600)
         }
-        ("POST", "/api/auth/forgot-password") => {
+        ("POST", "/api/auth/forgot-password", Some(addr)) => {
             (format!("ratelimit:forgot:{}", addr.ip()), state.config.rate_limit.forgot_password_per_hour, 3600)
         }
-        ("GET", path) if path.starts_with("/api/invite/") && path.ends_with("/validate") => {
+        ("GET", path, Some(addr)) if path.starts_with("/api/invite/") && path.ends_with("/validate") => {
             (format!("ratelimit:invite:{}", addr.ip()), state.config.rate_limit.invite_validate_per_minute, 60)
         }
         _ => {

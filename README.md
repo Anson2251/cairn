@@ -4,12 +4,14 @@ A Rust-based backend service for [Trackmaker](https://github.com/Anson2251/track
 
 ## Features
 
-- **User Authentication**: Email/password login, JWT-based sessions, OAuth support (Google, Apple)
-- **Invite System**: Invitation-only registration for community control
+- **User Authentication**: Email/password login, JWT-based sessions
+- **Invite System**: Invitation-only registration for alpha control
 - **Offline-First Sync**: Optimistic local-first architecture with cloud sync
-- **Route Sharing**: Share sketches and routes with other users
-- **Public Links**: Generate shareable public links for sketches
-- **Export**: Export sketches in various formats (GPX, KML, GeoJSON)
+- **Route Sharing**: Share sketches with other users (view/edit access)
+- **Public Links**: Generate read-only public links for sketches
+- **Data Export**: Export all data as GeoJSON
+- **Asset Storage**: Upload images/attachments (stored in DB)
+- **Trailblazers**: Public list of alpha pioneers
 
 ## Tech Stack
 
@@ -81,19 +83,90 @@ src/
 
 ## API Endpoints
 
+### Authentication
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/auth/register` | POST | Register with invite code |
+| `/api/auth/register` | POST | Register with email/password + invite code |
 | `/api/auth/login` | POST | Email/password login |
-| `/api/auth/logout` | POST | Logout |
+| `/api/auth/logout` | POST | Logout (revoke refresh token) |
 | `/api/auth/refresh` | POST | Refresh access token |
-| `/api/auth/me` | GET | Get current user |
-| `/api/sketches` | GET/POST | List/create sketches |
-| `/api/sketches/{id}/routes` | GET/POST | List/create routes |
-| `/api/sync/push` | POST | Push local changes |
+| `/api/auth/me` | GET | Get current user profile |
+| `/api/auth/me` | PUT | Update profile (username, avatar) |
+
+### Sketches (Protected)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/sketches` | GET | List user's sketches (paginated) |
+| `/api/sketches` | POST | Create new sketch |
+| `/api/sketches/shared` | GET | List sketches shared with me |
+| `/api/sketches/{id}` | GET | Get sketch details |
+| `/api/sketches/{id}` | PUT | Update sketch |
+| `/api/sketches/{id}` | DELETE | Delete sketch (soft delete) |
+
+### Routes (Protected)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/sketches/{id}/routes` | GET | List routes in sketch |
+| `/api/sketches/{id}/routes` | POST | Create route |
+| `/api/routes/{id}` | GET | Get route details |
+| `/api/routes/{id}` | PUT | Update route |
+| `/api/routes/{id}` | DELETE | Delete route (soft delete) |
+
+### Sync (Protected)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/sync/push` | POST | Push local changes to server |
 | `/api/sync/pull` | POST | Pull remote changes |
-| `/api/sketches/{id}/shares` | POST | Share sketch |
-| `/api/public/{token}` | GET | Access public sketch |
+| `/api/sync/resolve/{route_id}` | POST | Resolve conflict |
+
+### Sharing (Protected)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/sketches/{id}/shares` | GET | List shares |
+| `/api/sketches/{id}/shares` | POST | Share with user |
+| `/api/sketches/{id}/shares/{user_id}` | PUT | Update access level |
+| `/api/sketches/{id}/shares/{user_id}` | DELETE | Revoke share |
+| `/api/sketches/{id}/public-link` | POST | Create public link |
+| `/api/sketches/{id}/public-link` | DELETE | Revoke public link |
+
+### Assets (Protected)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/assets` | POST | Upload file (multipart, max 10MB) |
+| `/assets/{hash}.{ext}` | GET | Download file |
+
+### Export (Protected)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/export` | POST | Export all user data (GeoJSON) |
+
+### Invite
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/invite/{code}/validate` | GET | Validate invite code |
+
+### Public
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/public/{token}` | GET | Access public sketch (no auth) |
+| `/api/trailblazers` | GET | List alpha pioneers |
+
+### Admin (Protected)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/admin/invites` | GET | List invite codes |
+| `/api/admin/invites` | POST | Generate invite codes |
+| `/api/admin/invites/{id}` | DELETE | Revoke invite code |
 
 ## Architecture
 

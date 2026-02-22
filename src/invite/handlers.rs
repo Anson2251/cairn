@@ -182,3 +182,39 @@ pub async fn revoke_invite(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[derive(Debug, Serialize)]
+pub struct TrailblazerResponse {
+    pub sequence: i32,
+    pub cairn_name: String,
+    pub origin_coord: Option<(f64, f64)>,
+    pub joined_at: String,
+}
+
+pub async fn list_trailblazers(
+    State(state): State<Arc<AppState>>,
+) -> AppResult<Json<Vec<TrailblazerResponse>>> {
+    let trailblazers: Vec<(i32, String, Option<sqlx::postgres::types::PgPoint>, chrono::DateTime<Utc>)> = sqlx::query_as(
+        r#"
+        SELECT ic.sequence, ic.cairn_name, ic.origin_coord, u.created_at
+        FROM invite_codes ic
+        JOIN users u ON u.invite_code_id = ic.id
+        WHERE ic.used = TRUE
+        ORDER BY ic.sequence ASC
+        "#
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    let responses: Vec<TrailblazerResponse> = trailblazers
+        .into_iter()
+        .map(|(sequence, cairn_name, origin_coord, joined_at)| TrailblazerResponse {
+            sequence,
+            cairn_name,
+            origin_coord: origin_coord.map(|p| (p.x, p.y)),
+            joined_at: joined_at.to_rfc3339(),
+        })
+        .collect();
+
+    Ok(Json(responses))
+}

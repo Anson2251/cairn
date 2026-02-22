@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Cairn</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen">
+        <nav class="bg-white shadow">
+            <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+                <h1 class="text-xl font-bold text-gray-800">Cairn Admin</h1>
+                <div class="flex items-center gap-4">
+                    {% if is_default_admin %}
+                    <span class="px-3 py-1 bg-red-100 text-red-700 text-sm font-medium rounded-full flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        Default Admin
+                    </span>
+                    {% endif %}
+                    <span class="text-gray-600">{{ username }} ({{ email }})</span>
+                    <a href="/api/auth/logout" class="text-blue-600 hover:underline">Logout</a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <div class="mb-6">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8">
+                        <button hx-get="/admin/invites" hx-target="#tab-content" hx-swap="innerHTML" class="border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            Invites
+                        </button>
+                        <button hx-get="/admin/users" hx-target="#tab-content" hx-swap="innerHTML" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            Users
+                        </button>
+                        <button hx-get="/admin/stats" hx-target="#tab-content" hx-swap="innerHTML" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                            Stats
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <div id="tab-content" class="bg-white rounded-lg shadow p-6">
+                {% include "admin/invite_list.html" %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('htmx:afterSwap', function(evt) {
+            const buttons = document.querySelectorAll('nav button');
+            const target = evt.detail.target;
+            
+            buttons.forEach(btn => {
+                if (btn.getAttribute('hx-target') === '#tab-content') {
+                    btn.classList.remove('border-blue-500', 'text-blue-600');
+                    btn.classList.add('border-transparent', 'text-gray-500');
+                }
+            });
+            
+            const clickedBtn = evt.detail.requestConfig && evt.detail.requestConfig.el;
+            if (clickedBtn) {
+                clickedBtn.classList.remove('border-transparent', 'text-gray-500');
+                clickedBtn.classList.add('border-blue-500', 'text-blue-600');
+            }
+        });
+    </script>
+</body>
+</html>

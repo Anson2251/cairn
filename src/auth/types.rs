@@ -115,3 +115,10 @@ pub struct TrailblazerInfo {
     pub cairn_name: String,
     pub origin_coord: (f64, f64),
 }
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdateUserRequest {
+    #[validate(length(min = 3, max = 50, message = "Username must be 3-50 characters"))]
+    pub username: Option<String>,
+    pub avatar_url: Option<String>,
+}

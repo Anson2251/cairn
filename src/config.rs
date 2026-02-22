@@ -141,6 +141,19 @@ impl Default for RateLimitConfig {
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct AssetsConfig {
+    pub directory: String,
+}
+
+impl Default for AssetsConfig {
+    fn default() -> Self {
+        Self {
+            directory: "./assets".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct AppConfig {
     #[serde(default)]
@@ -159,6 +172,8 @@ pub struct AppConfig {
     pub smtp: SmtpConfig,
     #[serde(default)]
     pub rate_limit: RateLimitConfig,
+    #[serde(default)]
+    pub assets: AssetsConfig,
 }
 
 impl AppConfig {

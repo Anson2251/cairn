@@ -1,0 +1,23 @@
+<tr id="invite-{{ invite.id }}">
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ invite.sequence }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ invite.code }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ invite.cairn_name }}</td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        {% if invite.used %}
+        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Used</span>
+        {% else %}
+        <span class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">Available</span>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ invite.created_at }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {% if !invite.expires_at.is_empty() %}{{ invite.expires_at }}{% else %}Never{% endif %}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap">
+        {% if !invite.used %}
+        <form hx-post="/admin/invites/revoke" hx-target="#invite-list" hx-swap="innerHTML" hx-vals='{"id": "{{ invite.id }}"}'>
+            <button type="submit" class="text-red-600 hover:text-red-900 text-sm">Revoke</button>
+        </form>
+        {% endif %}
+    </td>
+</tr>

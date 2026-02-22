@@ -1,0 +1,47 @@
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ stats.total_users }}</dd>
+        </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-sm font-medium text-gray-500 truncate">Total Invites</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ stats.total_invites }}</dd>
+        </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-sm font-medium text-gray-500 truncate">Used Invites</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ stats.used_invites }}</dd>
+        </div>
+    </div>
+
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-sm font-medium text-gray-500 truncate">Total Sketches</dt>
+            <dd class="mt-1 text-3xl font-semibold text-gray-900">{{ stats.total_sketches }}</dd>
+        </div>
+    </div>
+</div>
+
+<div class="mt-6 bg-white overflow-hidden shadow rounded-lg p-6">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">Invite Usage</h3>
+    <div class="w-full bg-gray-200 rounded-full h-4">
+        {% if stats.total_invites > 0 %}
+        <div class="bg-blue-600 h-4 rounded-full" style="width: {{ (stats.used_invites * 100) / stats.total_invites }}%"></div>
+        {% else %}
+        <div class="bg-gray-400 h-4 rounded-full" style="width: 0%"></div>
+        {% endif %}
+    </div>
+    <p class="mt-2 text-sm text-gray-500">
+        {% if stats.total_invites > 0 %}
+        {{ (stats.used_invites * 100) / stats.total_invites }}% of invites have been used
+        {% else %}
+        No invites created yet
+        {% endif %}
+    </p>
+</div>
