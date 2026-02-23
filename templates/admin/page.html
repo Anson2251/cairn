@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Cairn</title>
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js" integrity="sha384-/TgkGk7p307TH7EXJDuUlgG3Ce1UVolAOFopFekQkkXihi5u/6OCvVKyz1W+idaz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="bg-gray-100">
     <div class="min-h-screen">
@@ -33,13 +33,13 @@
             <div class="mb-6">
                 <div class="border-b border-gray-200">
                     <nav class="-mb-px flex space-x-8">
-                        <button hx-get="/admin/invites" hx-target="#tab-content" hx-swap="innerHTML" class="border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        <button hx-get="/admin/invites" hx-target="#tab-content" hx-swap="innerHTML" data-active="true" class="[&:not([data-active='true'])]:border-transparent [&:not([data-active='true'])]:text-gray-500 hover:[&:not([data-active='true'])]:text-gray-700 hover:[&:not([data-active='true'])]:border-gray-300 border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                             Invites
                         </button>
-                        <button hx-get="/admin/users" hx-target="#tab-content" hx-swap="innerHTML" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        <button hx-get="/admin/users" hx-target="#tab-content" hx-swap="innerHTML" class="[&:not([data-active='true'])]:border-transparent [&:not([data-active='true'])]:text-gray-500 hover:[&:not([data-active='true'])]:text-gray-700 hover:[&:not([data-active='true'])]:border-gray-300 border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                             Users
                         </button>
-                        <button hx-get="/admin/stats" hx-target="#tab-content" hx-swap="innerHTML" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                        <button hx-get="/admin/stats" hx-target="#tab-content" hx-swap="innerHTML" class="[&:not([data-active='true'])]:border-transparent [&:not([data-active='true'])]:text-gray-500 hover:[&:not([data-active='true'])]:text-gray-700 hover:[&:not([data-active='true'])]:border-gray-300 border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                             Stats
                         </button>
                     </nav>
@@ -53,21 +53,11 @@
     </div>
 
     <script>
-        document.addEventListener('htmx:afterSwap', function(evt) {
-            const buttons = document.querySelectorAll('nav button');
-            const target = evt.detail.target;
-            
-            buttons.forEach(btn => {
-                if (btn.getAttribute('hx-target') === '#tab-content') {
-                    btn.classList.remove('border-blue-500', 'text-blue-600');
-                    btn.classList.add('border-transparent', 'text-gray-500');
-                }
-            });
-            
-            const clickedBtn = evt.detail.requestConfig && evt.detail.requestConfig.el;
-            if (clickedBtn) {
-                clickedBtn.classList.remove('border-transparent', 'text-gray-500');
-                clickedBtn.classList.add('border-blue-500', 'text-blue-600');
+        document.addEventListener('htmx:beforeRequest', function(evt) {
+            const btn = evt.detail.elt;
+            if (btn.getAttribute('hx-target') === '#tab-content') {
+                document.querySelectorAll("nav button[data-active]").forEach(b => b.removeAttribute('data-active'));
+                btn.setAttribute('data-active', 'true');
             }
         });
     </script>
