@@ -1,20 +1,28 @@
-<table class="min-w-full divide-y divide-gray-200">
-    <thead class="bg-gray-50">
-        <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Verified</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trailblazer</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
-        </tr>
-    </thead>
-    <tbody class="bg-white divide-y divide-gray-200">
-        {% for user in users %}
-        {% include "admin/user_row.html" %}
-        {% endfor %}
-    </tbody>
-</table>
+<div class="overflow-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Verified</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trailblazer</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+            {% include "admin/user_list_rows.html" %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-4">
+    <button hx-get="/admin/users/new" hx-target="#modal-content" hx-swap="innerHTML" onclick="document.getElementById('modal-container').classList.remove('hidden')"
+        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        New User
+    </button>
+</div>
 
 {% if users.is_empty() %}
 <p class="text-gray-500 text-center py-4">No users found</p>

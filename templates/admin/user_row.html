@@ -19,4 +19,8 @@
         {% if user.trailblazer_seq.is_empty() %}-{% else %}{{ user.trailblazer_seq }}{% endif %}
     </td>
     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.created_at }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+        <button hx-get="/admin/users/{{ user.id }}" hx-target="#modal-content" hx-swap="innerHTML" onclick="document.getElementById('modal-container').classList.remove('hidden')"
+            class="text-indigo-600 hover:text-indigo-900">Edit</button>
+    </td>
 </tr>

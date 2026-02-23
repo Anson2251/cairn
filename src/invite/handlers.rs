@@ -183,6 +183,69 @@ pub async fn revoke_invite(
     Ok(StatusCode::NO_CONTENT)
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UpdateInviteRequest {
+    pub expires_days: Option<i32>,
+}
+
+pub async fn get_invite(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<InviteCodeResponse>> {
+    let inv: InviteCodeRow = sqlx::query_as(
+        "SELECT * FROM invite_codes WHERE id = $1"
+    )
+    .bind(id)
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(InviteCodeResponse {
+        id: inv.id,
+        sequence: inv.sequence,
+        code: inv.code,
+        cairn_name: inv.cairn_name,
+        origin_coord: inv.origin_coord.map(|p| (p.x, p.y)),
+        used: inv.used,
+        used_by: inv.used_by,
+        used_at: inv.used_at.map(|d| d.to_rfc3339()),
+        expires_at: inv.expires_at.map(|d| d.to_rfc3339()),
+        created_at: inv.created_at.to_rfc3339(),
+    }))
+}
+
+pub async fn update_invite(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<Uuid>,
+    Json(body): Json<UpdateInviteRequest>,
+) -> AppResult<Json<InviteCodeResponse>> {
+    let expires_at = body.expires_days.map(|days| Utc::now() + Duration::days(days as i64));
+
+    let inv: InviteCodeRow = sqlx::query_as(
+        r#"
+        UPDATE invite_codes SET expires_at = COALESCE($2, expires_at)
+        WHERE id = $1
+        RETURNING *
+        "#
+    )
+    .bind(id)
+    .bind(expires_at)
+    .fetch_one(&state.db)
+    .await?;
+
+    Ok(Json(InviteCodeResponse {
+        id: inv.id,
+        sequence: inv.sequence,
+        code: inv.code,
+        cairn_name: inv.cairn_name,
+        origin_coord: inv.origin_coord.map(|p| (p.x, p.y)),
+        used: inv.used,
+        used_by: inv.used_by,
+        used_at: inv.used_at.map(|d| d.to_rfc3339()),
+        expires_at: inv.expires_at.map(|d| d.to_rfc3339()),
+        created_at: inv.created_at.to_rfc3339(),
+    }))
+}
+
 #[derive(Debug, Serialize)]
 pub struct TrailblazerResponse {
     pub sequence: i32,

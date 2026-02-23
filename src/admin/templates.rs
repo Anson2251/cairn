@@ -49,8 +49,58 @@ pub struct InviteRowTemplate<'a> {
 }
 
 #[derive(Template)]
+#[template(path = "admin/invite_list_rows.html")]
+pub struct InviteListRows<'a> {
+    pub invites: &'a [InviteRow],
+}
+
+#[derive(Debug, Clone)]
+pub struct InviteFormData {
+    pub id: uuid::Uuid,
+    pub sequence: i32,
+    pub code: String,
+    pub cairn_name: String,
+    pub used: bool,
+    pub expires_at: String,
+    pub created_at: String,
+}
+
+impl InviteFormData {
+    pub fn from_row(invite: &InviteRow) -> Self {
+        Self {
+            id: invite.id,
+            sequence: invite.sequence,
+            code: invite.code.clone(),
+            cairn_name: invite.cairn_name.clone(),
+            used: invite.used,
+            expires_at: invite.expires_at.clone(),
+            created_at: invite.created_at.clone(),
+        }
+    }
+}
+
+#[derive(Template)]
+#[template(path = "admin/invite_form.html")]
+pub struct InviteForm<'a> {
+    pub invite: &'a InviteFormData,
+    pub error: &'a str,
+}
+
+#[derive(Template)]
+#[template(path = "admin/invite_create_form.html")]
+pub struct InviteCreateForm<'a> {
+    pub error: &'a str,
+}
+
+#[derive(Template)]
 #[template(path = "admin/user_list.html")]
 pub struct UserList<'a> {
+    pub users: &'a [UserRow],
+}
+
+#[derive(Template)]
+#[template(path = "admin/user_list_rows.html")]
+pub struct UserListRows<'a> {
     pub users: &'a [UserRow],
 }
 
@@ -83,4 +133,35 @@ pub struct StatsData {
 #[template(path = "admin/stats.html")]
 pub struct StatsStats<'a> {
     pub stats: &'a StatsData,
+}
+
+#[derive(Debug, Clone)]
+pub struct UserFormData {
+    pub id: uuid::Uuid,
+    pub email: String,
+    pub username: String,
+    pub role: String,
+    pub email_verified: bool,
+    pub created_at: String,
+}
+
+impl UserFormData {
+    pub fn empty() -> Self {
+        Self {
+            id: uuid::Uuid::nil(),
+            email: String::new(),
+            username: String::new(),
+            role: "user".to_string(),
+            email_verified: false,
+            created_at: String::new(),
+        }
+    }
+}
+
+#[derive(Template)]
+#[template(path = "admin/user_form.html")]
+pub struct UserForm<'a> {
+    pub user: &'a UserFormData,
+    pub is_new: bool,
+    pub error: &'a str,
 }

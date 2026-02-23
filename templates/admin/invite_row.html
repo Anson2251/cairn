@@ -14,10 +14,11 @@
         {% if !invite.expires_at.is_empty() %}{{ invite.expires_at }}{% else %}Never{% endif %}
     </td>
     <td class="px-6 py-4 whitespace-nowrap">
+        <button hx-get="/admin/invites/{{ invite.id }}" hx-target="#modal-content" hx-swap="innerHTML" onclick="document.getElementById('modal-container').classList.remove('hidden')"
+            class="text-indigo-600 hover:text-indigo-900 text-sm mr-2">Edit</button>
         {% if !invite.used %}
-        <form hx-post="/admin/invites/revoke" hx-target="#invite-list" hx-swap="innerHTML" hx-vals='{"id": "{{ invite.id }}"}'>
-            <button type="submit" class="text-red-600 hover:text-red-900 text-sm">Revoke</button>
-        </form>
+        <button hx-post="/admin/invites/{{ invite.id }}/delete" hx-target="#invite-list" hx-swap="innerHTML"
+            class="text-red-600 hover:text-red-900 text-sm">Revoke</button>
         {% endif %}
     </td>
 </tr>

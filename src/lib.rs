@@ -17,7 +17,7 @@ pub use config::AppConfig;
 pub use db::{create_database_if_not_exists, create_pool, run_migrations};
 
 use axum::{
-    routing::{delete, get, post, put},
+    routing::{get, post, put},
     Router,
 };
 use redis::aio::ConnectionManager;
@@ -91,7 +91,9 @@ pub fn create_router(state: Arc<AppState>) -> Router {
 
     let admin_routes = Router::new()
         .route("/invites", get(invite::handlers::list_invites).post(invite::handlers::create_invites))
-        .route("/invites/{id}", delete(invite::handlers::revoke_invite))
+        .route("/invites/{id}", get(invite::handlers::get_invite).put(invite::handlers::update_invite).delete(invite::handlers::revoke_invite))
+        .route("/users", get(admin::handlers::list_users).post(admin::handlers::create_user))
+        .route("/users/{id}", get(admin::handlers::get_user).put(admin::handlers::update_user).delete(admin::handlers::delete_user))
         .layer(axum::middleware::from_fn_with_state(state.clone(), admin_middleware))
         .layer(axum::middleware::from_fn_with_state(state.clone(), auth_middleware))
         .layer(axum::middleware::from_fn_with_state(state.clone(), rate_limit_middleware));
