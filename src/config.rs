@@ -6,6 +6,8 @@ use std::env;
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
+    #[serde(default)]
+    pub secure_cookies: bool,
 }
 
 impl Default for ServerConfig {
@@ -13,6 +15,7 @@ impl Default for ServerConfig {
         Self {
             host: "0.0.0.0".to_string(),
             port: 8080,
+            secure_cookies: false,
         }
     }
 }

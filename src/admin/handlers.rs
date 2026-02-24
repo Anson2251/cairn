@@ -76,7 +76,7 @@ pub async fn login(
 
         let cookie = Cookie::build(("refresh_token", refresh_token))
             .http_only(true)
-            .secure(true)
+            .secure(state.config.server.secure_cookies)
             .same_site(SameSite::Strict)
             .path("/")
             .max_age(cookie::time::Duration::days(state.config.jwt.refresh_expiry_days))
@@ -131,7 +131,7 @@ pub async fn login(
 
     let cookie = Cookie::build(("refresh_token", refresh_token))
         .http_only(true)
-        .secure(true)
+        .secure(state.config.server.secure_cookies)
         .same_site(SameSite::Strict)
         .path("/")
         .max_age(cookie::time::Duration::days(state.config.jwt.refresh_expiry_days))
@@ -519,7 +519,7 @@ pub async fn logout(
 
     let cookie = Cookie::build(("refresh_token", ""))
         .http_only(true)
-        .secure(true)
+        .secure(state.config.server.secure_cookies)
         .same_site(SameSite::Strict)
         .path("/")
         .max_age(cookie::time::Duration::seconds(0))
