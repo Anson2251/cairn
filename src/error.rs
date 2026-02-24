@@ -74,6 +74,9 @@ pub enum AppError {
 
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
+
+    #[error("Bad request: {0}")]
+    BadRequest(String),
 }
 
 impl From<ValidationErrors> for AppError {
@@ -157,6 +160,7 @@ impl IntoResponse for AppError {
                 format!("Configuration error: {}", msg),
             ),
             AppError::Serialization(_) => (StatusCode::BAD_REQUEST, "Invalid JSON".to_string()),
+            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.into()),
         };
 
         let body = Json(json!({

@@ -113,7 +113,7 @@ pub async fn create_invites(
     Json(body): Json<CreateInviteRequest>,
 ) -> AppResult<Json<CreateInviteResponse>> {
     let count = body.count.unwrap_or(1).clamp(1, 100);
-    let expires_at = body.expires_days.map(|days| Utc::now() + Duration::days(days as i64));
+    let expires_at = body.expires_days.map(|days| Utc::now() + Duration::days((days as i64).clamp(1, 90)));
 
     let max_sequence: Option<i32> = sqlx::query_scalar(
         "SELECT MAX(sequence) FROM invite_codes"

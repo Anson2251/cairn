@@ -1,4 +1,5 @@
 use askama::Template;
+use crate::error::AppError;
 use axum::{
     body::Body,
     extract::{Form, Path, State},
@@ -35,7 +36,7 @@ pub async fn login(
     Form(form): Form<LoginForm>,
 ) -> AppResult<Response> {
     let is_default_admin = form.email == "admin@example.com" && form.password == "12345678";
-    
+
     if is_default_admin {
         let user_exists: Option<Uuid> = sqlx::query_scalar(
             "SELECT id FROM users WHERE email = 'admin@example.com' AND deleted_at IS NULL"
@@ -272,6 +273,12 @@ pub async fn create_invites(
     Form(form): Form<CreateInviteForm>,
 ) -> AppResult<Html<String>> {
     let count = form.count.unwrap_or(1).clamp(1, 100);
+
+    if let Some(expires_days) = form.expires_days {
+        if expires_days < 1 || expires_days > 90 {
+            return Err(AppError::BadRequest("expires_days must be between 1 and 90".into()));
+        }
+    }
     let expires_at = form.expires_days.map(|days| chrono::Utc::now() + chrono::Duration::days(days as i64));
 
     let max_sequence: Option<i32> = sqlx::query_scalar(
@@ -526,7 +533,7 @@ pub async fn logout(
         .build();
 
     let html = LoggedOutPage.render()?;
-    
+
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(SET_COOKIE, cookie.to_string())
@@ -660,7 +667,7 @@ pub async fn update_user(
 
     let user: (Uuid, String, String, String, bool, Option<i32>, chrono::DateTime<chrono::Utc>) = sqlx::query_as(
         r#"
-        UPDATE users SET 
+        UPDATE users SET
             email = COALESCE($2, email),
             username = COALESCE($3, username),
             hashed_password = COALESCE($4, hashed_password),
@@ -843,7 +850,7 @@ pub async fn update_user_form(
 
     let result = sqlx::query(
         r#"
-        UPDATE users SET 
+        UPDATE users SET
             email = $2,
             username = $3,
             hashed_password = COALESCE($4, hashed_password),

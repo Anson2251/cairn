@@ -25,8 +25,8 @@ pub fn generate_invite_code(sequence: i32, salt: &str) -> InviteCodeData {
 
     let weather = WEATHER[h[0] as usize % WEATHER.len()];
     let terrain = TERRAIN[h[1] as usize % TERRAIN.len()];
-    let cairn_name = format!("{}-{}", weather, terrain);
-    let code = format!("CAIRN-{:03}-{}", sequence, cairn_name);
+    let cairn_name = format!("{} {}", weather, terrain).to_uppercase();
+    let code = format!("CAIRN-{:03}-{}", sequence, cairn_name).to_uppercase();
 
     let lat = (u16::from_be_bytes([h[2], h[3]]) as f64 / 65535.0) * 180.0 - 90.0;
     let lng = (u16::from_be_bytes([h[4], h[5]]) as f64 / 65535.0) * 360.0 - 180.0;
