@@ -19,9 +19,8 @@ use cairn::{
 };
 
 pub fn get_test_database_url() -> String {
-    let user = whoami::username().unwrap_or_else(|_| "postgres".to_string());
     let db_name = format!("cairn_test_{}", Uuid::new_v4().to_string().replace("-", "_"));
-    format!("postgresql://{}@localhost:5432/{}", user, db_name)
+    format!("postgresql://postgres@localhost:5432/{}", db_name)
 }
 
 pub struct TestApp {

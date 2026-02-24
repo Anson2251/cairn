@@ -10,7 +10,11 @@ use cairn::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv().ok();
+    // Load .env file first, before initializing tracing
+    match dotenvy::dotenv() {
+        Ok(path) => eprintln!(".env file loaded from: {:?}", path),
+        Err(e) => eprintln!("No .env file found or failed to load: {}", e),
+    }
 
     let subscriber = FmtSubscriber::builder()
         .with_max_level(Level::INFO)
@@ -20,6 +24,14 @@ async fn main() -> anyhow::Result<()> {
     info!("Starting Cairn server...");
 
     let config = AppConfig::new()?;
+    
+    info!(
+        "Configuration loaded - Server: {}:{}, Database: {}, Redis: {}",
+        config.server.host,
+        config.server.port,
+        config.database.url,
+        config.redis.url
+    );
 
     db::create_database_if_not_exists(&config.database.url).await?;
     let db_pool = db::create_pool(&config.database).await?;

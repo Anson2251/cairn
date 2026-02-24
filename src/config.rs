@@ -24,9 +24,8 @@ pub struct DatabaseConfig {
 
 impl Default for DatabaseConfig {
     fn default() -> Self {
-        let user = whoami::username().unwrap_or_else(|_| "postgres".to_string());
         Self {
-            url: format!("postgresql://{}@localhost:5432/cairn", user),
+            url: "postgresql://postgres@localhost:5432/cairn".to_string(),
         }
     }
 }
@@ -141,19 +140,6 @@ impl Default for RateLimitConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct AssetsConfig {
-    pub directory: String,
-}
-
-impl Default for AssetsConfig {
-    fn default() -> Self {
-        Self {
-            directory: "./assets".to_string(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct AppConfig {
     #[serde(default)]
@@ -172,8 +158,6 @@ pub struct AppConfig {
     pub smtp: SmtpConfig,
     #[serde(default)]
     pub rate_limit: RateLimitConfig,
-    #[serde(default)]
-    pub assets: AssetsConfig,
 }
 
 impl AppConfig {
